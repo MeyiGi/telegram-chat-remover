@@ -29,6 +29,7 @@ venv.bak/
 *.session-journal
 
 # Exported chats / downloads
+data/
 chat_*.json
 photos/
 downloads/

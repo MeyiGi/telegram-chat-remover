@@ -1,0 +1,1 @@
+"""Independent automation features."""
