@@ -67,6 +67,7 @@ class AppWiringTests(unittest.TestCase):
                 "API_HASH": "test-hash",
                 "MY_PHONE": "+10000000000",
                 "GIRLFRIEND_USERNAME": "test_contact",
+                "GOOGLE_DRIVE_ENABLED": "0",
                 "DIARY_ENABLED": "0",
                 "DATA_DIR": temporary,
             },
