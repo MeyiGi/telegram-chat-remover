@@ -66,6 +66,11 @@ class ArchiveStore:
                 notion_page_id TEXT,
                 detail TEXT
             );
+            CREATE TABLE IF NOT EXISTS drive_media_uploads (
+                relative_path TEXT PRIMARY KEY,
+                drive_file_id TEXT NOT NULL,
+                uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
         self._import_previous_export()
@@ -133,6 +138,47 @@ class ArchiveStore:
                     raise ArchiveError(f"Unsafe media path for message {message_id}")
                 if not path.is_file() or path.stat().st_size == 0:
                     raise ArchiveError(f"Media for message {message_id} is missing: {relative}")
+
+    def pending_drive_media(self) -> list[tuple[str, Path]]:
+        """Return existing archived media that has not been uploaded to Drive."""
+        uploaded = {
+            row[0]
+            for row in self.connection.execute(
+                "SELECT relative_path FROM drive_media_uploads"
+            )
+        }
+        pending = {}
+        rows = self.connection.execute(
+            "SELECT payload FROM messages WHERE chat_id = ? ORDER BY message_id",
+            (self.chat_id,),
+        )
+        for (payload,) in rows:
+            message = json.loads(payload)
+            for field in ("photo", "file"):
+                relative = message.get(field)
+                if not relative or relative in uploaded:
+                    continue
+                path = (self.data_dir / relative).resolve()
+                if not path.is_relative_to(self.data_dir.resolve()):
+                    raise ArchiveError(
+                        f"Unsafe media path for message {message.get('id', '?')}"
+                    )
+                if path.is_file() and path.stat().st_size:
+                    pending[relative] = path
+        return list(pending.items())
+
+    def mark_drive_media_uploaded(self, relative_path: str, drive_file_id: str) -> None:
+        with self.connection:
+            self.connection.execute(
+                """
+                INSERT INTO drive_media_uploads (relative_path, drive_file_id)
+                VALUES (?, ?)
+                ON CONFLICT(relative_path) DO UPDATE SET
+                    drive_file_id = excluded.drive_file_id,
+                    uploaded_at = CURRENT_TIMESTAMP
+                """,
+                (relative_path, drive_file_id),
+            )
 
     def write_json_export(self) -> Path:
         descriptor, temporary_name = tempfile.mkstemp(

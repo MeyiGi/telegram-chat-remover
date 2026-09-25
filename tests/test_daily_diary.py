@@ -4,8 +4,9 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from archive_store import ArchiveStore
-from daily_diary import DailyDiaryService, markdown_to_notion_blocks
+from couplebot.features.diary.service import DailyDiaryService
+from couplebot.integrations.notion import markdown_to_notion_blocks
+from couplebot.storage.archive import ArchiveStore
 
 
 class FakeGroq:

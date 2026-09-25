@@ -40,6 +40,27 @@ class AuthConfig:
 
 
 @dataclass(frozen=True)
+class GoogleDriveAuthConfig:
+    client_secrets_file: Path
+    token_file: Path
+
+    @classmethod
+    def from_env(cls) -> GoogleDriveAuthConfig:
+        load_dotenv()
+        return cls(
+            client_secrets_file=Path(
+                os.environ.get(
+                    "GOOGLE_DRIVE_CLIENT_SECRETS",
+                    "credentials/google-drive-client.json",
+                )
+            ),
+            token_file=Path(
+                os.environ.get("GOOGLE_DRIVE_TOKEN_FILE", "data/google-drive-token.json")
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class AppConfig:
     api_id: int
     api_hash: str
@@ -64,6 +85,9 @@ class AppConfig:
     notion_diary_parent_page_id: str
     notion_diary_data_source_id: str
     notion_diary_title_property: str
+    google_drive_enabled: bool
+    google_drive_token_file: Path
+    google_drive_folder_name: str
 
     @classmethod
     def from_env(cls) -> AppConfig:
@@ -107,5 +131,15 @@ class AppConfig:
             ),
             notion_diary_title_property=(
                 os.environ.get("NOTION_DIARY_TITLE_PROPERTY", "Name").strip() or "Name"
+            ),
+            google_drive_enabled=_enabled(
+                os.environ.get("GOOGLE_DRIVE_ENABLED", "0")
+            ),
+            google_drive_token_file=Path(
+                os.environ.get("GOOGLE_DRIVE_TOKEN_FILE", "data/google-drive-token.json")
+            ),
+            google_drive_folder_name=(
+                os.environ.get("GOOGLE_DRIVE_FOLDER_NAME", "CoupleBot Media").strip()
+                or "CoupleBot Media"
             ),
         )

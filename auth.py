@@ -1,17 +1,6 @@
-"""Interactive Telegram login entry point."""
+"""Legacy launcher; use ``python -m couplebot.cli.auth`` instead."""
 
-import asyncio
-
-from telethon import TelegramClient
-
-from couplebot.config import AuthConfig
-from couplebot.integrations.telegram.auth import authorize
-
-
-def main() -> None:
-    config = AuthConfig.from_env()
-    client = TelegramClient(config.telegram_session, config.api_id, config.api_hash)
-    asyncio.run(authorize(client, config.my_phone))
+from couplebot.cli.auth import main
 
 
 if __name__ == "__main__":

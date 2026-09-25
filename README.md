@@ -16,6 +16,7 @@ The code is organized as independent automations under `couplebot/features/`, wi
 - Resets the pending deletion state when a newer incoming message arrives
 - Persists the pending timer across restarts; an already-expired timer is cancelled at startup
 - Creates a daily Notion diary at 05:00 using a Groq summary of the previous day's Telegram messages
+- Optionally backs up Telegram photos, videos, voice messages, stickers, and files to Google Drive before deletion
 
 ## Setup
 
@@ -63,10 +64,10 @@ Get `API_ID` and `API_HASH` from [my.telegram.org](https://my.telegram.org) → 
 
 **5. Run**
 ```bash
-python main.py
+python -m couplebot
 ```
 
-On first run, Telethon will ask for your phone number and a verification code to create a `session.session` file.
+For a separate interactive login, run `python -m couplebot.cli.auth` first. The older `python main.py` and `python auth.py` commands still work. Telethon stores the session under the name set by `TELEGRAM_SESSION` (default: `karlis_listener.session`).
 
 ## Output
 
@@ -77,6 +78,18 @@ When you send `/stats` or `/statistics` in the monitored chat, the app first syn
 The example configuration starts in preview mode: when deletion would be due, the app archives the chat and records a `preview` entry in SQLite without deleting messages. Set `DELETE_DRY_RUN=0` after checking the export and attachments. A preview clears that pending timer; the next deletion needs a new incoming message and read event.
 
 At 05:00 in `DIARY_TIMEZONE`, the app syncs the conversation, sends the previous local calendar day's text to Groq, and writes the result into `Дневник → год → месяц → день` in Notion. Missing year, month, or day pages are created automatically; existing pages are reused, and an automatic entry is marked to avoid adding it twice. Failed dates are retried and missed dates after the last completed entry are processed in order. On the first run, the diary starts with the previous day. Share the Notion root page with the integration and keep both API tokens only in `.env`.
+
+### Google Drive media backup
+
+To back up archived Telegram media, enable the Google Drive API in Google Cloud Console and create an OAuth client of type **Desktop app**. Save the downloaded JSON as `credentials/google-drive-client.json`, add `GOOGLE_DRIVE_ENABLED=1` to `.env`, then run:
+
+```bash
+python -m couplebot.cli.google_drive_auth
+```
+
+Authorize the Google account that owns the Drive. On the next app start, existing local archive media and new photos, videos, voice messages, stickers, and other files are uploaded into the `CoupleBot Media` folder. The app uses resumable uploads and records completed uploads in SQLite, so retries do not create duplicates. Missing local attachments cannot be recovered from Google Drive; they must still exist in the Telegram archive.
+
+The saved OAuth token is stored under `data/` and is excluded from git. Google may expire refresh tokens after 7 days while an external OAuth app remains in Testing status; for uninterrupted automation, publish the OAuth app or reauthorize when Google expires the token.
 
 ## Notes
 

@@ -10,8 +10,10 @@ from couplebot.config import AppConfig
 from couplebot.features.cleanup.handlers import register_cleanup_handlers
 from couplebot.features.cleanup.service import CleanupService
 from couplebot.features.diary.service import DailyDiaryService, daily_diary_loop
+from couplebot.features.media_backup.service import MediaBackupService
 from couplebot.features.stats.handlers import register_stats_handler
 from couplebot.integrations.groq import GroqDiaryWriter
+from couplebot.integrations.google_drive import GoogleDriveMediaWriter
 from couplebot.integrations.notion import NotionDiaryWriter
 from couplebot.integrations.telegram.archive import (
     delete_archived_snapshot,
@@ -46,15 +48,29 @@ async def run(config: AppConfig, client) -> None:
     )
     print("Мониторинг запущен...")
     partner = await _find_partner(client, config.girlfriend_username)
+    drive_writer = None
+    if config.google_drive_enabled:
+        drive_writer = GoogleDriveMediaWriter.from_token_file(
+            config.google_drive_token_file, config.google_drive_folder_name
+        )
     archive = ArchiveStore(
         config.data_dir, partner.id, partner.first_name or config.girlfriend_username
     )
+    media_backup = None
+    if drive_writer is not None:
+        media_backup = MediaBackupService(archive, drive_writer)
+        print(f"Резервная копия медиа в Google Drive включена: {config.google_drive_folder_name}.")
     sync_lock = asyncio.Lock()
     conversation = TelegramConversation(client, partner)
     tasks: list[asyncio.Task] = []
 
     async def sync_archive():
-        return await sync_conversation(client, partner, archive)
+        result = await sync_conversation(client, partner, archive)
+        if media_backup is not None:
+            uploaded = await media_backup.upload_pending()
+            if uploaded:
+                print(f"В Google Drive загружено файлов: {uploaded}.")
+        return result
 
     async def delete_snapshot(reason: str, message_ids: list[int]) -> None:
         await delete_archived_snapshot(
@@ -74,6 +90,10 @@ async def run(config: AppConfig, client) -> None:
     )
 
     try:
+        if media_backup is not None:
+            uploaded = await media_backup.upload_pending()
+            if uploaded:
+                print(f"В Google Drive загружено файлов из старого архива: {uploaded}.")
         await cleanup.restore(
             isinstance(getattr(partner, "status", None), UserStatusOnline)
         )

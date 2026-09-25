@@ -1,26 +1,15 @@
 import asyncio
 import json
-import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
-
-from archive_store import ArchiveStore
-
-
-with patch.dict(
-    os.environ,
-    {
-        "API_ID": "12345",
-        "API_HASH": "test-hash",
-        "MY_PHONE": "+10000000000",
-        "GIRLFRIEND_USERNAME": "test_contact",
-    },
-):
-    import main
+from couplebot.integrations.telegram.archive import (
+    delete_archived_snapshot,
+    sync_conversation,
+)
+from couplebot.storage.archive import ArchiveStore
 
 
 class FakeMessage:
@@ -71,10 +60,9 @@ class BackupFlowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             archive = ArchiveStore(Path(temporary), 42, "Friend")
             fake = FakeClient([FakeMessage(1), FakeMessage(2, media=True)])
-            with patch.object(main, "client", fake):
-                export_path, live_ids = asyncio.run(
-                    main.export_telegram_format(SimpleNamespace(id=42), archive)
-                )
+            export_path, live_ids = asyncio.run(
+                sync_conversation(fake, SimpleNamespace(id=42), archive)
+            )
             self.assertEqual(live_ids, [1, 2])
             exported = json.loads(export_path.read_text(encoding="utf-8"))
             self.assertEqual(len(exported["messages"]), 2)
@@ -86,11 +74,8 @@ class BackupFlowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             archive = ArchiveStore(Path(temporary), 42, "Friend")
             fake = FakeClient([FakeMessage(1, media=True)], fail_download=True)
-            with patch.object(main, "client", fake):
-                with self.assertRaises(OSError):
-                    asyncio.run(
-                        main.export_telegram_format(SimpleNamespace(id=42), archive)
-                    )
+            with self.assertRaises(OSError):
+                asyncio.run(sync_conversation(fake, SimpleNamespace(id=42), archive))
             self.assertFalse(archive.export_path.exists())
             self.assertEqual(
                 archive.connection.execute("SELECT COUNT(*) FROM messages").fetchone()[0], 0
@@ -102,8 +87,8 @@ class BackupFlowTests(unittest.TestCase):
             archive = ArchiveStore(Path(temporary), 42, "Friend")
             fake = FakeClient([FakeMessage(1)])
             asyncio.run(
-                main.delete_archived_snapshot(fake, SimpleNamespace(id=42), archive,
-                                              "test", [1], True)
+                delete_archived_snapshot(fake, SimpleNamespace(id=42), archive,
+                                         "test", [1], True)
             )
             self.assertEqual(fake.deleted, [])
             self.assertEqual(
@@ -120,8 +105,8 @@ class BackupFlowTests(unittest.TestCase):
             fake = FakeClient([FakeMessage(1)], leave_messages=True)
             with self.assertRaisesRegex(Exception, "remain after deletion"):
                 asyncio.run(
-                    main.delete_archived_snapshot(fake, SimpleNamespace(id=42), archive,
-                                                  "test", [1], False)
+                    delete_archived_snapshot(fake, SimpleNamespace(id=42), archive,
+                                             "test", [1], False)
                 )
             self.assertEqual(fake.deleted, [([1], True)])
             self.assertEqual(

@@ -30,6 +30,7 @@ venv.bak/
 
 # Exported chats / downloads
 data/
+credentials/google-drive-client.json
 chat_*.json
 photos/
 downloads/

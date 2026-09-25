@@ -7,7 +7,7 @@ This is a private, long-lived automation project for one Telegram conversation a
 ## Navigation
 
 - Check CodeGraph status before editing unfamiliar code. If this repository is not indexed, say that `codegraph init` is needed and inspect the files normally.
-- `main.py` is the small CLI entry point; `couplebot/app.py` wires the running application.
+- `couplebot/cli/` owns the run and login entry points; `main.py` and `auth.py` are legacy launchers. `couplebot/app.py` wires the running application.
 - `couplebot/features/<name>/` owns one automation. Keep its business rules and scheduled job together.
 - `couplebot/integrations/` owns Telegram, Groq, Notion, and future external API calls.
 - `couplebot/storage/` owns SQLite and local files. Never make a feature depend on another feature's private tables.
@@ -29,4 +29,4 @@ This is a private, long-lived automation project for one Telegram conversation a
 - Do not print tokens, raw private conversation text, or media paths in normal logs. Keep `.env`, session files, and `data/` out of Git.
 - Keep feature modules importable without network access or reading `.env`. Only the composition root starts clients and jobs.
 - Preserve existing archive and `diary_runs` data when evolving the SQLite schema. Prefer additive migrations.
-- Keep `python main.py` working while moving code into packages. Remove compatibility imports only after all callers have moved.
+- Keep `python main.py` and `python auth.py` working as thin launchers. Import implementation modules from `couplebot`, not from those launchers.

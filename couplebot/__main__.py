@@ -1,4 +1,4 @@
-"""Legacy launcher; use ``python -m couplebot`` for new deployments."""
+"""Run the application with ``python -m couplebot``."""
 
 from couplebot.cli.run import main
 

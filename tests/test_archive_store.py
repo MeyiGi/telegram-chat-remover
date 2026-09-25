@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
-from archive_store import ArchiveError, ArchiveStore
+from couplebot.storage.archive import ArchiveError, ArchiveStore
 
 
 class ArchiveStoreTests(unittest.TestCase):
@@ -67,7 +67,7 @@ class ArchiveStoreTests(unittest.TestCase):
             store = ArchiveStore(Path(temporary), 42, "Friend")
             store.export_path.write_text("previous", encoding="utf-8")
             store.save_messages([{"id": 1, "type": "message", "text": "new"}])
-            with patch("archive_store.os.replace", side_effect=OSError("disk error")):
+            with patch("couplebot.storage.archive.os.replace", side_effect=OSError("disk error")):
                 with self.assertRaises(OSError):
                     store.write_json_export()
             self.assertEqual(store.export_path.read_text(), "previous")

@@ -37,6 +37,6 @@ async def authorize(client, phone: str) -> None:
 
         me = await client.get_me()
         print(f"Успешно! Авторизован как: {me.first_name}")
-        print("Сессия сохранена — теперь запускай python3 main.py")
+        print("Сессия сохранена — теперь запускай python -m couplebot")
     finally:
         await client.disconnect()
